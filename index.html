@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitSub // MAINFRAME ACCESS v2.1</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 0. CORE VARIABLES --- */
+        :root {
+            --acid-green: #39FF14;
+            --dark-green: #0b3b0b;
+            --black: #050505;
+            --glitch-color: #ff00ff;
+            --font-head: 'Chakra Petch', sans-serif;
+            --font-mono: 'Share Tech Mono', monospace;
+            --font-term: 'VT323', monospace;
+            --scan-line: rgba(0, 255, 0, 0.05);
+        }
+
+        /* --- 1. GLOBAL STYLES --- */
+        * { box-sizing: border-box; outline: none; }
+
+        body {
+            margin: 0;
+            background-color: var(--black);
+            color: var(--acid-green);
+            font-family: var(--font-term);
+            font-size: 18px;
+            overflow: hidden; /* Body never scrolls */
+            /* Dithered Noise Background */
+            background-image: 
+                radial-gradient(var(--dark-green) 1px, transparent 1px),
+                repeating-linear-gradient(0deg, transparent, transparent 2px, #000 3px);
+            background-size: 4px 4px, 100% 4px;
+        }
+
+        /* --- 2. CRT OVERLAY --- */
+        .screen-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 999;
+            animation: flicker 0.15s infinite;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.95; }
+            100% { opacity: 0.9; }
+        }
+
+        /* --- 3. GRID LAYOUT --- */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            height: 100vh;
+            border: 2px solid var(--acid-green);
+        }
+
+        /* --- 4. SIDEBAR (DOCS) --- */
+        .sidebar {
+            background: rgba(0, 10, 0, 0.9);
+            border-right: 2px solid var(--acid-green);
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden; /* STATIC: No scrolling allowed here */
+        }
+
+        .brand-header {
+            padding: 20px;
+            background: var(--acid-green);
+            color: var(--black);
+            text-align: center;
+        }
+
+        .brand-header h1 {
+            margin: 0;
+            font-family: var(--font-head);
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .nav-item {
+            border-bottom: 1px solid var(--dark-green);
+        }
+
+        .nav-btn {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--acid-green);
+            padding: 15px 20px;
+            text-align: left;
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+
+        .nav-btn:hover, .nav-btn.active {
+            background: var(--acid-green);
+            color: var(--black);
+            padding-left: 30px;
+        }
+
+        /* --- 5. TERMINAL AREA --- */
+        .terminal-wrapper {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden; /* Ensures flex children handle the scroll, not the parent */
+            height: 100%;
+        }
+
+        .doc-viewer {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 60px; /* Leave room for input */
+            background: rgba(5, 5, 5, 0.98);
+            padding: 40px;
+            overflow-y: auto; /* Docs are scrollable */
+            display: none; 
+            z-index: 10;
+            border-left: 1px solid var(--acid-green);
+        }
+
+        .doc-viewer.active { display: block; }
+        
+        .doc-content { max-width: 900px; margin: 0 auto; }
+
+        .doc-content h2 { 
+            font-family: var(--font-head); 
+            border-bottom: 3px solid var(--acid-green);
+            padding-bottom: 10px;
+            margin-top: 0;
+            color: #fff;
+        }
+
+        .doc-content h3 {
+            color: var(--acid-green);
+            margin-top: 30px;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+        }
+        
+        .doc-content p, .doc-content li {
+            font-family: var(--font-mono);
+            line-height: 1.6;
+            color: #ccffcc;
+        }
+
+        /* ASCII Diagram styling in Docs */
+        .doc-content pre {
+            background: #001100;
+            border: 1px dashed var(--acid-green);
+            padding: 15px;
+            color: #fff;
+            overflow-x: auto;
+            font-family: var(--font-term);
+            font-size: 1.1rem;
+        }
+
+        .doc-content code {
+            background: #003300;
+            padding: 2px 5px;
+            color: #fff;
+            font-family: var(--font-mono);
+        }
+
+        .terminal-output {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto; /* SCROLLABLE: Main content area scrolls */
+            font-size: 1.3rem;
+            padding-bottom: 20px;
+            scroll-behavior: smooth;
+        }
+
+        .line { margin-bottom: 6px; word-wrap: break-word; }
+        .sys { color: #555; }
+        .user-req { color: #fff; font-weight: bold; }
+        .success { color: var(--acid-green); text-shadow: 0 0 5px var(--acid-green); }
+        .error { color: #ff3333; }
+        .highlight { background: var(--acid-green); color: black; padding: 2px 5px; display: inline-block; }
+        .info { color: #00ffff; }
+
+        .input-bar {
+            background: #001100;
+            border-top: 2px solid var(--acid-green);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            flex-shrink: 0; /* Prevents input bar from squishing */
+        }
+
+        .prompt { margin-right: 10px; color: var(--acid-green); font-weight: bold; }
+        
+        input[type="text"] {
+            background: transparent;
+            border: none;
+            color: #fff;
+            flex-grow: 1;
+            font-family: var(--font-term);
+            font-size: 1.4rem;
+            caret-color: var(--acid-green);
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid var(--dark-green); padding: 10px; text-align: left; }
+        th { background: var(--dark-green); color: #fff; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: var(--dark-green); border: 1px solid var(--acid-green); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--acid-green); }
+
+    </style>
+</head>
+<body>
+
+    <div class="screen-overlay"></div>
+
+    <div class="grid-container">
+        
+        <aside class="sidebar">
+            <div class="brand-header">
+                <h1>GitSub</h1>
+                <small>SYS.ROOT.ACCESS</small>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item"><button class="nav-btn" onclick="showDoc('history')">[0x01] HISTORY</button></li>
+                <li class="nav-item"><button class="nav-btn" onclick="showDoc('objective')">[0x02] OBJECTIVE</button></li>
+                <li class="nav-item"><button class="nav-btn" onclick="showDoc('mechanics')">[0x03] MECHANICS</button></li>
+                <li class="nav-item"><button class="nav-btn" onclick="showDoc('arsenal')">[0x04] ARSENAL (BASIC)</button></li>
+                <li class="nav-item"><button class="nav-btn" onclick="showDoc('workflow')">[0x05] WORKFLOW</button></li>
+                <li class="nav-item"><button class="nav-btn" onclick="showDoc('advanced')">[0x06] ADVANCED_OPS</button></li>
+                <li class="nav-item" style="margin-top:20px; border-top: 2px solid var(--acid-green);">
+                    <button class="nav-btn" onclick="hideDoc()">> RETURN_TERMINAL</button>
+                </li>
+            </ul>
+            <div style="margin-top: auto; padding: 20px; border-top: 1px solid var(--dark-green);">
+                <div style="font-size: 0.8rem; color: #666;">
+                    MEM: 64TB // OK<br>
+                    NET: SECURE // OK<br>
+                    USER: INITIATE
+                </div>
+            </div>
+        </aside>
+
+        <main class="terminal-wrapper">
+            
+            <div id="doc-layer" class="doc-viewer">
+                <div id="doc-content" class="doc-content"></div>
+            </div>
+
+            <div id="terminal" class="terminal-output">
+                <div class="line" style="white-space: pre; line-height: 14px; margin-bottom: 30px; color: var(--acid-green);">
+  ________.__  __   _________      ___.    
+ /  _____/|__|/  |_/   _____/ __ __\_ |__  
+/   \  ___|  \   __\_____  \ |  |  \| __ \ 
+\    \_\  \  ||  | /        \|  |  /| \_\ \
+ \______  /__||__|/_______  /|____/ |___  /
+        \/                \/            \/ 
+                </div>
+                <div class="line sys">KERNEL_LOAD... COMPLETE</div>
+                <div class="line sys">ESTABLISHING SECURE CONNECTION... OK</div>
+                <div class="line"><br></div>
+                <div class="line">WELCOME TO THE GITHUB TRAINING SIMULATION v2.1</div>
+                <div class="line">YOUR MISSION: MASTER THE COMMAND LINE INTERFACE.</div>
+                <div class="line">------------------------------------------------</div>
+                <div class="line highlight">MISSION 0: IDENTITY PROTOCOL</div>
+                <div class="line">Before accessing the repo, you must identify yourself.</div>
+                <div class="line">Step 1: Configure your username.</div>
+                <div class="line">Type: <span style="color:#fff">git config --global user.name "YourName"</span></div>
+            </div>
+
+            <div class="input-bar">
+                <span class="prompt">root@gitsub:~#</span>
+                <input type="text" id="cmd-input" autocomplete="off" autofocus spellcheck="false">
+            </div>
+        </main>
+    </div>
+
+<script>
+    // --- CONTENT DATABASE ---
+    const docs = {
+        history: `
+            <h2>0x01 // THE_ORIGIN_STORY</h2>
+            <p><strong>DATE:</strong> 2008<br>
+            <strong>CREATORS:</strong> Tom Preston-Werner, Chris Wanstrath, PJ Hyett, Scott Chacon.<br>
+            <strong>STATUS:</strong> ACQUIRED BY MICROSOFT (2018)</p>
+            <p>Before GitHub, code sharing was primitive. Developers sent patches via email. Linus Torvalds created <strong>Git</strong> (the engine) in 2005 to manage the Linux kernel. GitHub built the social network on top of that engine.</p>
+            <p>It turned code into a social asset. "Social Coding" was the tagline. It democratized open source, moving it from obscure mailing lists to a public, searchable interface.</p>
+        `,
+        objective: `
+            <h2>0x02 // OBJECTIVE_PARAMETERS</h2>
+            <p>Why do millions of developers log into this mainframe daily?</p>
+            <ul>
+                <li><strong>VERSION_CONTROL:</strong> Time travel for code. Revert mistakes instantly via <code>git restore</code> or <code>reset</code>.</li>
+                <li><strong>COLLABORATION:</strong> Async development. 100 people can edit one file without overwriting each other using branches.</li>
+                <li><strong>PORTFOLIO:</strong> Your GitHub profile is your resume. Green squares = proof of work.</li>
+                <li><strong>OPEN_SOURCE:</strong> Access to the world's largest library of free tools.</li>
+            </ul>
+        `,
+        mechanics: `
+            <h2>0x03 // SYSTEM_MECHANICS</h2>
+            <p>Understanding the difference between the Tool (Git) and the Hub (GitHub).</p>
+            
+            <h3>The Distributed Model</h3>
+            <pre>
+   SERVER (GitHub)
+      |
+      +--- DEV_1 (Local Copy)
+      |
+      +--- DEV_2 (Local Copy)
+            </pre>
+            <p>Unlike centralized systems (SVN), every developer has a FULL backup of the history on their machine.</p>
+
+            <h3>Merge Topology</h3>
+            <p>Visualizing how history combines (from data sheet).</p>
+            
+            <p><strong>Standard Merge:</strong> Preserves history of the feature branch.</p>
+            <pre>
+Before:          After (git merge):
+A---B---C (main)     A---B---C-------M (main)
+         \                    \     /
+          D---E (feat)         D---E
+            </pre>
+
+            <p><strong>Squash Merge:</strong> Compresses history into one cleaner commit.</p>
+            <pre>
+Before:          After (git merge --squash):
+A---B---C (main)     A---B---C---(DE) (main)
+         \                    
+          D---E (feat)        
+            </pre>
+        `,
+        arsenal: `
+            <h2>0x04 // THE_ARSENAL (BASIC)</h2>
+            <p>Essential commands for daily survival.</p>
+            
+            <h3>> IDENTITY (Updated)</h3>
+            <pre>git config --global user.name "Name"</pre>
+            <pre>git config --global user.email "mail@ex.com"</pre>
+            
+            <h3>> INITIALIZATION</h3>
+            <pre>git init</pre> (Turns folder into repo)
+            <pre>git clone [url]</pre> (Downloads repo)
+            
+            <h3>> STAGING & SAVING</h3>
+            <pre>git status</pre> (Check files)
+            <pre>git add .</pre> (Stage all changes)
+            <pre>git commit -m "Msg"</pre> (Save snapshot)
+            
+            <h3>> SYNCHRONIZATION</h3>
+            <pre>git push origin main</pre> (Upload)
+            <pre>git pull</pre> (Download)
+        `,
+        workflow: `
+            <h2>0x05 // ATTACK_VECTORS (WORKFLOWS)</h2>
+            <h3>The "Pull Request" (PR)</h3>
+            <ol>
+                <li><strong>FORK:</strong> Create a copy of a repo.</li>
+                <li><strong>CLONE:</strong> Download it.</li>
+                <li><strong>BRANCH:</strong> <code>git switch -c new-feature</code></li>
+                <li><strong>CODE:</strong> Make changes.</li>
+                <li><strong>PUSH:</strong> Upload branch.</li>
+                <li><strong>PR:</strong> Request merge on GitHub.</li>
+            </ol>
+            <h3>.gitignore</h3>
+            <p>A hidden file that tells Git what NOT to track (passwords, node_modules).</p>
+        `,
+        advanced: `
+            <h2>0x06 // ADVANCED_OPS (DATA DUMP)</h2>
+            <p>Recovered data from cheat-sheet.pdf. High-level commands.</p>
+
+            <h3>> MODERN BRANCHING</h3>
+            <pre>git switch [branch]</pre> (Safer alternative to checkout)
+            <pre>git switch -c [branch]</pre> (Create & Switch)
+            <pre>git branch --sort=-committerdate</pre> (List by recent)
+            <pre>git branch -d [name]</pre> (Delete branch)
+
+            <h3>> UNDOING CHANGES (SAFETY)</h3>
+            <pre>git restore [file]</pre> (Discard changes in a file)
+            <pre>git restore --source [commit] [file]</pre> (Grab old version)
+            <pre>git reset [file]</pre> (Unstage a file)
+
+            <h3>> DIFFING (INTELLIGENCE)</h3>
+            <pre>git diff</pre> (View unstaged changes)
+            <pre>git diff --staged</pre> (View staged changes)
+            <pre>git show [commit]</pre> (Inspect specific save point)
+
+            <h3>> ADVANCED PUSH</h3>
+            <pre>git push -u origin [name]</pre> (Push & Track)
+            <pre>git push --force-with-lease</pre> (Safe Force Push)
+        `
+    };
+
+    // --- TERMINAL LOGIC ---
+    const term = document.getElementById('terminal');
+    const input = document.getElementById('cmd-input');
+    const docLayer = document.getElementById('doc-layer');
+    const docContent = document.getElementById('doc-content');
+
+    // Game State
+    let level = 0.0; // 0.0 = Name, 0.1 = Email
+    let userName = "";
+    
+    // Helper: Print line
+    function print(txt, type='normal') {
+        const div = document.createElement('div');
+        div.className = 'line ' + type;
+        div.innerHTML = txt;
+        term.appendChild(div);
+        term.scrollTop = term.scrollHeight;
+    }
+
+    // Toggle Docs
+    window.showDoc = (key) => {
+        docContent.innerHTML = docs[key];
+        docLayer.classList.add('active');
+    };
+    window.hideDoc = () => {
+        docLayer.classList.remove('active');
+        input.focus();
+    };
+
+    // Command Processor
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const val = input.value.trim();
+            if(!val) return;
+            
+            // UI Feedback
+            print(`root@gitsub:~# ${val}`, 'user-req');
+            input.value = '';
+
+            // Handle Docs Escape
+            if(docLayer.classList.contains('active')) hideDoc();
+
+            process(val);
+        }
+    });
+
+    function process(cmd) {
+        const parts = cmd.split(' ');
+        const base = parts[0].toLowerCase();
+        
+        // --- UNIVERSAL COMMANDS (SANDBOX) ---
+        if(base === 'clear') { term.innerHTML = ''; return; }
+        if(base === 'help') { 
+            print("CMDS: init, add, commit, push, switch, branch, merge, restore, log, diff", 'sys'); 
+            return; 
+        }
+
+        // Sandbox Responses (Always active)
+        if(base === 'git') {
+            if(cmd.includes('log')) {
+                print("<span style='color:yellow'>commit a1b2c3d</span> (HEAD -> main)", 'sys');
+                print("Author: " + (userName || "Unknown"), 'sys');
+                print("Date:   Tue Jan 20 20:26:00 2026", 'sys');
+                print("    Update mainframe protocols", 'sys');
+                return;
+            }
+            if(cmd.includes('diff')) {
+                print("diff --git a/secret_code.js b/secret_code.js", 'sys');
+                print("index e69de29..d95f3ad 100644", 'sys');
+                print("<span style='color:red'>--- a/secret_code.js</span>", 'sys');
+                print("<span style='color:#39FF14'>+++ b/secret_code.js</span>", 'sys');
+                print("@@ -1 +1 @@", 'sys');
+                print("- console.log('Hello');", 'sys');
+                print("+ console.log('HACKED');", 'sys');
+                return;
+            }
+            if(cmd.includes('show')) {
+                 print("commit 882736 (tag: v1.0)", 'sys');
+                 print("Initial architecture load complete.", 'sys');
+                 return;
+            }
+        }
+
+        if(base !== 'git' && base !== 'touch' && base !== 'echo') {
+            print(`bash: ${base}: command not found`, 'error');
+            return;
+        }
+
+        // --- GAME LOOP ---
+
+        // MISSION 0: IDENTITY (Name)
+        if(level === 0.0) {
+            if(cmd.includes('config') && cmd.includes('user.name')) {
+                // Extract name roughly
+                const match = cmd.match(/["'](.*?)["']/);
+                userName = match ? match[1] : "Operative";
+                print(`USER SET: ${userName}`, 'success');
+                level = 0.1;
+                print("Step 2: Configure your email address (Required for commit log).");
+                print("Type: <span style='color:#fff'>git config --global user.email \"you@example.com\"</span>");
+            } else {
+                print("Error: Identification required. Set user.name first.", 'error');
+            }
+        }
+        // MISSION 0.1: IDENTITY (Email)
+        else if(level === 0.1) {
+            if(cmd.includes('config') && cmd.includes('user.email')) {
+                print("IDENTITY CONFIRMED. WELCOME, OPERATIVE.", 'success');
+                level = 1;
+                print("<br>------------------------------------------------");
+                print("MISSION 1: INITIALIZATION");
+                print("Create a new empty repository in this directory.");
+                print("Hint: <span style='color:#fff'>git init</span>");
+            } else {
+                print("Error: Set user.email to proceed.", 'error');
+            }
+        }
+        // MISSION 1: INIT
+        else if(level === 1) {
+            if(cmd.includes('init')) {
+                print("Initialized empty Git repository in /root/project/.git/", 'success');
+                level = 2;
+                print("<br>------------------------------------------------");
+                print("MISSION 2: CREATION & STATUS");
+                print("I have created a file 'secret_code.js' for you.");
+                print("Check the status of the repo.");
+                print("Hint: <span style='color:#fff'>git status</span>");
+            } else { print("Task: Initialize the repo.", 'error'); }
+        }
+        // MISSION 2: STATUS -> ADD
+        else if(level === 2) {
+            if(cmd.includes('status')) {
+                print("On branch main", 'sys');
+                print("Untracked files:", 'sys');
+                print("<span style='color:red'>secret_code.js</span>", 'error'); 
+                print("<br>The file is untracked. Stage it now.");
+                print("Hint: <span style='color:#fff'>git add .</span>");
+                level = 3; 
+            } else { print("Task: Check status first.", 'error'); }
+        }
+        // MISSION 3: ADD
+        else if(level === 3) {
+            if(cmd.includes('add')) {
+                print("File 'secret_code.js' added to staging area.", 'success');
+                level = 4;
+                print("<br>------------------------------------------------");
+                print("MISSION 4: COMMIT");
+                print("Save this state to the history timeline.");
+                print("Hint: <span style='color:#fff'>git commit -m \"message\"</span>");
+            } else if(cmd.includes('status')) {
+                print("Untracked files: secret_code.js", 'error');
+            } else { print("Task: Add the file.", 'error'); }
+        }
+        // MISSION 4: COMMIT
+        else if(level === 4) {
+            if(cmd.includes('commit')) {
+                if(cmd.includes('-m')) {
+                    print(`[main (root-commit)] ${userName} committed code`, 'success');
+                    print("1 file changed, 15 insertions(+)", 'sys');
+                    level = 5;
+                    print("<br>------------------------------------------------");
+                    print("MISSION 5: BRANCHING (MODERN)");
+                    print("Never work on main directly. Create a feature branch.");
+                    print("Use the modern 'switch' command (or checkout).");
+                    print("Hint: <span style='color:#fff'>git switch -c feature-login</span>");
+                } else { print("Error: Commits need a message (-m).", 'error'); }
+            } else { print("Task: Commit the changes.", 'error'); }
+        }
+        // MISSION 5: BRANCHING
+        else if(level === 5) {
+            // Support both switch -c and checkout -b
+            if((cmd.includes('switch') && cmd.includes('-c')) || (cmd.includes('checkout') && cmd.includes('-b'))) {
+                print("Switched to a new branch 'feature-login'", 'success');
+                level = 6;
+                print("<br>------------------------------------------------");
+                print("MISSION 6: IGNORING FILES");
+                print("We have sensitive API keys. Create a .gitignore file.");
+                print("Hint: <span style='color:#fff'>touch .gitignore</span>");
+            } else { print("Task: Create a new branch.", 'error'); }
+        }
+        // MISSION 6: IGNORE
+        else if(level === 6) {
+            if(cmd.includes('touch') && cmd.includes('.gitignore')) {
+                print(".gitignore created.", 'success');
+                print("Added 'node_modules' to ignore list.", 'sys');
+                level = 7;
+                print("<br>------------------------------------------------");
+                print("MISSION 7: DEPLOYMENT");
+                print("Upload your feature branch to the remote mainframe.");
+                print("Hint: <span style='color:#fff'>git push origin feature-login</span>");
+            } else { print("Task: Create .gitignore using 'touch'.", 'error'); }
+        }
+        // MISSION 7: PUSH
+        else if(level === 7) {
+            if(cmd.includes('push')) {
+                print("To github.com:root/project.git", 'success');
+                print("* [new branch]      feature-login -> feature-login", 'success');
+                level = 8;
+                print("<br>------------------------------------------------");
+                print("MISSION 8: VERIFICATION");
+                print("Your code is live on the branch. Let's verify our local branches.");
+                print("Hint: <span style='color:#fff'>git branch</span>");
+            } else { print("Task: Push the branch.", 'error'); }
+        }
+        // MISSION 8: LIST BRANCHES
+        else if(level === 8) {
+            if(cmd.includes('branch') && !cmd.includes('-d')) {
+                print("  main", 'sys');
+                print("* <span style='color:#39FF14'>feature-login</span>", 'sys');
+                level = 9;
+                print("<br>------------------------------------------------");
+                print("MISSION 9: THE SWITCH");
+                print("The feature is done. Return to the main timeline to prepare for merge.");
+                print("Hint: <span style='color:#fff'>git switch main</span>");
+            } else { print("Task: List branches.", 'error'); }
+        }
+        // MISSION 9: SWITCH BACK
+        else if(level === 9) {
+            if(cmd.includes('switch') || cmd.includes('checkout')) {
+                if(cmd.includes('main')) {
+                    print("Switched to branch 'main'", 'success');
+                    print("Your branch is up to date with 'origin/main'.", 'sys');
+                    level = 10;
+                    print("<br>------------------------------------------------");
+                    print("MISSION 10: MERGE PROTOCOL");
+                    print("Combine the feature code into main.");
+                    print("Hint: <span style='color:#fff'>git merge feature-login</span>");
+                } else { print("Task: Switch to 'main'.", 'error'); }
+            } else { print("Task: Switch branches.", 'error'); }
+        }
+        // MISSION 10: MERGE
+        else if(level === 10) {
+            if(cmd.includes('merge')) {
+                print("Updating a1b2c..d4e5f", 'sys');
+                print("Fast-forward", 'sys');
+                print(" secret_code.js | 2 ++", 'sys');
+                print(" 1 file changed, 2 insertions(+)", 'success');
+                level = 11;
+                print("<br>------------------------------------------------");
+                print("MISSION 11: CLEANUP");
+                print("The branch is merged. Delete the old feature branch to stay organized.");
+                print("Hint: <span style='color:#fff'>git branch -d feature-login</span>");
+            } else { print("Task: Merge the branch.", 'error'); }
+        }
+        // MISSION 11: DELETE
+        else if(level === 11) {
+            if(cmd.includes('branch') && (cmd.includes('-d') || cmd.includes('-D'))) {
+                print("Deleted branch feature-login (was d4e5f).", 'success');
+                level = 12;
+                print("<br>================================================", 'highlight');
+                print("TRAINING COMPLETE. YOU ARE NOW A GITHUB OPERATIVE.", 'highlight');
+                print("================================================");
+                print("SYSTEM UNLOCKED. You may continue to practice commands (diff, log, show).");
+            } else { print("Task: Delete the branch using flag -d.", 'error'); }
+        }
+        // END GAME SANDBOX
+        else {
+            if(cmd.includes('status')) print("On branch main. Nothing to commit, working tree clean.", 'sys');
+            else print("Command executed. System stable.", 'sys');
+        }
+    }
+</script>
+
+</body>
+</html>
